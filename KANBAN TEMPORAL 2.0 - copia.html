@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de Kanban Temporal (Cloud)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #1a365d;
+            --accent-color: #2b6cb0;
+            --bg-color: #f7fafc;
+            --border-color: #e2e8f0;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: Calibri, 'Segoe UI', Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: #000;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 360px 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 900px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .control-panel {
+            background: #ffffff;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            height: fit-content;
+        }
+
+        .control-panel h2 {
+            font-size: 1.3rem;
+            color: var(--primary-color);
+            margin-bottom: 20px;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 10px;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 6px;
+            font-size: 0.9rem;
+            color: #333;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #cbd5e0;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-family: Calibri, Arial, sans-serif;
+        }
+
+        /* Estilo especial para el input de fecha bloqueado */
+        .form-group input[readonly] {
+            background-color: #edf2f7;
+            color: #4a5568;
+            cursor: not-allowed;
+            font-weight: bold;
+        }
+
+        .data-preview-box {
+            background: #f8fafc;
+            border: 1px dashed #cbd5e0;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 18px;
+            font-size: 0.9rem;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+
+        .btn:hover {
+            background-color: var(--accent-color);
+        }
+
+        .preview-panel {
+            background: #ffffff;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        .preview-panel h2 {
+            font-size: 1.3rem;
+            color: var(--primary-color);
+            margin-bottom: 20px;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 10px;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        .print-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 25px;
+            background: #e2e8f0;
+            padding: 20px;
+            border-radius: 8px;
+            max-height: 75vh;
+            overflow-y: auto;
+        }
+
+        /* --- DISEÑO DE TARJETA KANBAN --- */
+        .kanban-card {
+            width: 150mm;
+            height: 105mm;
+            background: white;
+            border: 1px solid #ccc;
+            padding: 6mm 8mm;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            page-break-after: always;
+            page-break-inside: avoid;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            font-family: Calibri, 'Segoe UI', Arial, sans-serif;
+            color: #000;
+        }
+
+        .kanban-header {
+            text-align: center;
+        }
+
+        .kanban-header .title {
+            font-size: 26pt;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+            line-height: 1;
+        }
+
+        .kanban-header .date {
+            font-size: 15pt;
+            font-weight: bold;
+            margin-top: 4px;
+        }
+
+        .kanban-middle {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            text-align: center;
+            margin: 2mm 0;
+        }
+
+        .process-col {
+            width: 30%;
+        }
+
+        .process-col .val {
+            font-size: 16pt;
+            font-weight: bold;
+        }
+
+        .process-col .lbl {
+            font-size: 8pt;
+            font-weight: bold;
+            color: #000;
+            margin-top: 1px;
+        }
+
+        .sebango-col {
+            width: 40%;
+        }
+
+        /* SEBANGO AMPLIADO A 80PT */
+        .sebango-col .val {
+            font-size: 80pt; 
+            font-weight: bold;
+            line-height: 0.85;
+            letter-spacing: -2px;
+        }
+
+        .part-section {
+            text-align: center;
+            margin: 1mm 0;
+        }
+
+        .part-section .sub {
+            font-size: 10pt;
+            font-weight: bold;
+        }
+
+        .part-section .part-num {
+            font-size: 24pt;
+            font-weight: bold;
+            line-height: 1;
+            margin-top: 2px;
+        }
+
+        .part-section .lbl {
+            font-size: 8pt;
+            font-weight: bold;
+        }
+
+        /* --- PIE DE PÁGINA CON QPC CENTRADO EXACTO --- */
+        .kanban-footer {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            align-items: center;
+            margin-top: 1mm;
+        }
+
+        .footer-cell-left {
+            text-align: left;
+        }
+
+        .footer-cell-center {
+            text-align: center;
+        }
+
+        .footer-cell-right {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+        }
+
+        .footer-cell-left .val, .footer-cell-center .val {
+            font-size: 22pt;
+            font-weight: bold;
+            line-height: 1.1;
+        }
+
+        .footer-cell-left .lbl, .footer-cell-center .lbl {
+            font-size: 9pt;
+            font-weight: bold;
+        }
+
+        .qr-box {
+            width: 26mm;
+            height: 26mm;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .qr-box img {
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        @media print {
+            @page {
+                size: 150mm 105mm;
+                margin: 0;
+            }
+
+            html, body {
+                background: #fff;
+                padding: 0;
+                margin: 0;
+                width: 150mm;
+                height: 105mm;
+                overflow: hidden;
+            }
+
+            .control-panel, .preview-panel h2, .btn {
+                display: none !important;
+            }
+
+            .container {
+                display: block;
+                padding: 0;
+                margin: 0;
+                width: 100%;
+                height: 100%;
+            }
+
+            .preview-panel {
+                padding: 0;
+                margin: 0;
+                box-shadow: none;
+                background: transparent;
+            }
+
+            .print-area {
+                background: none;
+                padding: 0;
+                margin: 0;
+                max-height: none;
+                overflow: visible;
+                display: flex;
+                flex-direction: column;
+                align-items: flex-start;
+                justify-content: flex-start;
+            }
+
+            .kanban-card {
+                box-shadow: none;
+                border: none !important;
+                width: 150mm;
+                height: 105mm;
+                margin: 0;
+                transform: translate(0, 0);
+                page-break-after: always;
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="control-panel">
+        <h2>Configurar Kanban</h2>
+        
+        <form id="kanbanForm" onsubmit="event.preventDefault(); generateKanbans();">
+            <div class="form-group">
+                <label for="sebangoInput">SEBANGO / Código:</label>
+                <input type="text" id="sebangoInput" placeholder="Cargando base de datos..." list="sebangoList" required oninput="onSebangoChange()" disabled>
+                <datalist id="sebangoList"></datalist>
+            </div>
+
+            <div class="data-preview-box">
+                <div><strong>Part Number:</strong> <span id="infoPN">-</span></div>
+                <div><strong>Prev. Process:</strong> <span id="infoPrev">-</span></div>
+                <div><strong>Next Process:</strong> <span id="infoNext">-</span></div>
+                <div><strong>Box Type:</strong> <span id="infoBox">-</span></div>
+            </div>
+
+            <div class="form-group">
+                <label for="qpcInput">Número de QPC (Piezas/Caja):</label>
+                <input type="number" id="qpcInput" value="120" min="1" required oninput="generateKanbans()">
+            </div>
+
+            <div class="form-group">
+                <label for="quantityInput">Cantidad de Kanbans a solicitar:</label>
+                <input type="number" id="quantityInput" value="1" min="1" max="100" required oninput="generateKanbans()">
+            </div>
+
+            <div class="form-group">
+                <label for="dateInput">Fecha (Bloqueada al día actual):</label>
+                <input type="text" id="dateInput" readonly>
+            </div>
+
+            <button type="button" class="btn" onclick="triggerPrint()">Imprimir</button>
+        </form>
+    </div>
+
+    <div class="preview-panel">
+        <h2>Vista Previa de Impresión</h2>
+        <div class="print-area" id="printArea"></div>
+    </div>
+</div>
+
+<script>
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycby6Lig5xwMFmD4p5iJRKKJu6PxZqwoUrUtW4vI_YqWpShTEYOvbNqQQnQ8HisUhCm8/exec"; 
+
+    let databaseMap = new Map();
+
+    async function loadDatabase() {
+        const inputElement = document.getElementById('sebangoInput');
+        try {
+            const response = await fetch(WEB_APP_URL);
+            const data = await response.json();
+            
+            const datalist = document.getElementById('sebangoList');
+            datalist.innerHTML = "";
+
+            data.forEach(item => {
+                if (item.sebango) {
+                    databaseMap.set(item.sebango.toUpperCase(), item);
+                    
+                    const option = document.createElement('option');
+                    option.value = item.sebango;
+                    option.textContent = `${item.sebango} - ${item.partNumber}`;
+                    datalist.appendChild(option);
+                }
+            });
+
+            inputElement.placeholder = "Escribe o selecciona Sebango...";
+            inputElement.disabled = false;
+
+            if (data.length > 0) {
+                inputElement.value = data[0].sebango;
+                onSebangoChange();
+            }
+        } catch (error) {
+            console.error("Error al cargar la base de datos:", error);
+            inputElement.placeholder = "Error al conectar con Sheets";
+        }
+    }
+
+    function initDate() {
+        const today = new Date();
+        const dd = String(today.getDate()).padStart(2, '0');
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const yyyy = today.getFullYear();
+        document.getElementById('dateInput').value = `${dd}/${mm}/${yyyy}`;
+    }
+
+    function findRecord(sebangoCode) {
+        return databaseMap.get(sebangoCode.trim().toUpperCase());
+    }
+
+    function onSebangoChange() {
+        const val = document.getElementById('sebangoInput').value;
+        const match = findRecord(val);
+
+        if (match) {
+            document.getElementById('infoPN').textContent = match.partNumber;
+            document.getElementById('infoPrev').textContent = match.prevProcess;
+            document.getElementById('infoNext').textContent = match.nextProcess;
+            document.getElementById('infoBox').textContent = match.boxType;
+        } else {
+            document.getElementById('infoPN').textContent = "No encontrado";
+            document.getElementById('infoPrev').textContent = "-";
+            document.getElementById('infoNext').textContent = "-";
+            document.getElementById('infoBox').textContent = "-";
+        }
+        generateKanbans();
+    }
+
+    function generateKanbans() {
+        const sebango = document.getElementById('sebangoInput').value.toUpperCase() || "";
+        const qpc = document.getElementById('qpcInput').value || "120";
+        const qty = parseInt(document.getElementById('quantityInput').value) || 1;
+        const dateVal = document.getElementById('dateInput').value || "";
+
+        const match = findRecord(sebango);
+
+        const partNumber = match ? match.partNumber : "---";
+        const prevProcess = match ? match.prevProcess : "---";
+        const nextProcess = match ? match.nextProcess : "---";
+        const boxType = match ? match.boxType : "---";
+
+        const printArea = document.getElementById('printArea');
+        printArea.innerHTML = "";
+
+        for (let i = 0; i < qty; i++) {
+            const card = document.createElement('div');
+            card.className = 'kanban-card';
+            const qrId = `qrcode_${i}`;
+
+            card.innerHTML = `
+                <div class="kanban-header">
+                    <div class="title">KANBAN TEMPORAL</div>
+                    <div class="date">${dateVal}</div>
+                </div>
+
+                <div class="kanban-middle">
+                    <div class="process-col">
+                        <div class="val">${prevProcess}</div>
+                        <div class="lbl">PREVIOUS PROCESS</div>
+                    </div>
+                    <div class="sebango-col">
+                        <div class="val">${sebango}</div>
+                    </div>
+                    <div class="process-col">
+                        <div class="val">${nextProcess}</div>
+                        <div class="lbl">NEXT PROCESS</div>
+                    </div>
+                </div>
+
+                <div class="part-section">
+                    <div class="sub">KTMEX KANBAN</div>
+                    <div class="part-num">${partNumber}</div>
+                    <div class="lbl">PART NUMBER</div>
+                </div>
+
+                <div class="kanban-footer">
+                    <div class="footer-cell-left">
+                        <div class="val">${boxType}</div>
+                        <div class="lbl">BOX TYPE</div>
+                    </div>
+                    <div class="footer-cell-center">
+                        <div class="val">${qpc}</div>
+                        <div class="lbl">QPC</div>
+                    </div>
+                    <div class="footer-cell-right">
+                        <div class="qr-box" id="${qrId}"></div>
+                    </div>
+                </div>
+            `;
+
+            printArea.appendChild(card);
+
+            new QRCode(document.getElementById(qrId), {
+                text: sebango || "VACIO",
+                width: 100,
+                height: 100,
+                colorDark : "#000000",
+                colorLight : "#ffffff",
+                correctLevel : QRCode.CorrectLevel.H
+            });
+        }
+    }
+
+    function triggerPrint() {
+        window.print();
+    }
+
+    window.onload = () => {
+        initDate();
+        loadDatabase();
+    };
+</script>
+
+</body>
+</html>
