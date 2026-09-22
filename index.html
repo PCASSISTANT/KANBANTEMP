@@ -78,7 +78,6 @@
             font-family: Calibri, Arial, sans-serif;
         }
 
-        /* Estilo especial para el input de fecha bloqueado */
         .form-group input[readonly] {
             background-color: #edf2f7;
             color: #4a5568;
@@ -109,6 +108,11 @@
 
         .btn:hover {
             background-color: var(--accent-color);
+        }
+
+        .btn:disabled {
+            background-color: #a0aec0;
+            cursor: not-allowed;
         }
 
         .preview-panel {
@@ -151,7 +155,9 @@
             flex-direction: column;
             justify-content: space-between;
             page-break-after: always;
+            break-after: page;
             page-break-inside: avoid;
+            break-inside: avoid;
             box-shadow: 0 4px 10px rgba(0,0,0,0.15);
             font-family: Calibri, 'Segoe UI', Arial, sans-serif;
             color: #000;
@@ -202,7 +208,6 @@
             width: 40%;
         }
 
-        /* SEBANGO AMPLIADO A 80PT */
         .sebango-col .val {
             font-size: 80pt; 
             font-weight: bold;
@@ -232,7 +237,6 @@
             font-weight: bold;
         }
 
-        /* --- PIE DE PÁGINA CON QPC CENTRADO EXACTO --- */
         .kanban-footer {
             display: grid;
             grid-template-columns: 1fr 1fr 1fr;
@@ -289,9 +293,9 @@
                 background: #fff;
                 padding: 0;
                 margin: 0;
-                width: 150mm;
-                height: 105mm;
-                overflow: hidden;
+                width: 100%;
+                height: auto !important;
+                overflow: visible !important;
             }
 
             .control-panel, .preview-panel h2, .btn {
@@ -303,7 +307,6 @@
                 padding: 0;
                 margin: 0;
                 width: 100%;
-                height: 100%;
             }
 
             .preview-panel {
@@ -318,11 +321,8 @@
                 padding: 0;
                 margin: 0;
                 max-height: none;
-                overflow: visible;
-                display: flex;
-                flex-direction: column;
-                align-items: flex-start;
-                justify-content: flex-start;
+                overflow: visible !important;
+                display: block;
             }
 
             .kanban-card {
@@ -331,9 +331,10 @@
                 width: 150mm;
                 height: 105mm;
                 margin: 0;
-                transform: translate(0, 0);
-                page-break-after: always;
-                page-break-inside: avoid;
+                page-break-after: always !important;
+                break-after: page !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
             }
         }
     </style>
@@ -344,7 +345,7 @@
     <div class="control-panel">
         <h2>Configurar Kanban</h2>
         
-        <form id="kanbanForm" onsubmit="event.preventDefault(); generateKanbans();">
+        <form id="kanbanForm" onsubmit="event.preventDefault(); triggerPrint();">
             <div class="form-group">
                 <label for="sebangoInput">SEBANGO / Código:</label>
                 <input type="text" id="sebangoInput" placeholder="Cargando base de datos..." list="sebangoList" required oninput="onSebangoChange()" disabled>
@@ -373,7 +374,12 @@
                 <input type="text" id="dateInput" readonly>
             </div>
 
-            <button type="button" class="btn" onclick="triggerPrint()">Imprimir</button>
+            <div class="form-group">
+                <label for="timeInput">Hora:</label>
+                <input type="text" id="timeInput" readonly>
+            </div>
+
+            <button type="button" id="btnPrint" class="btn" onclick="triggerPrint()">Imprimir y Registrar</button>
         </form>
     </div>
 
@@ -384,14 +390,18 @@
 </div>
 
 <script>
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycby6Lig5xwMFmD4p5iJRKKJu6PxZqwoUrUtW4vI_YqWpShTEYOvbNqQQnQ8HisUhCm8/exec"; 
+    // URL de lectura (Base de datos Kanban)
+    const READ_APP_URL = "https://script.google.com/macros/s/AKfycby6Lig5xwMFmD4p5iJRKKJu6PxZqwoUrUtW4vI_YqWpShTEYOvbNqQQnQ8HisUhCm8/exec"; 
+    
+    // URL de escritura (Asegúrate de colocar la URL correcta generada tras el desplegar)
+    const WRITE_APP_URL = "https://script.google.com/macros/s/AKfycbxtoscz6U6tIQBcPpVUh1FNx3y7Sfhy9PBfxlsmFo2pFHe8ECtUVO2msF48Us4CngY/exec";
 
     let databaseMap = new Map();
 
     async function loadDatabase() {
         const inputElement = document.getElementById('sebangoInput');
         try {
-            const response = await fetch(WEB_APP_URL);
+            const response = await fetch(READ_APP_URL);
             const data = await response.json();
             
             const datalist = document.getElementById('sebangoList');
@@ -426,7 +436,13 @@
         const dd = String(today.getDate()).padStart(2, '0');
         const mm = String(today.getMonth() + 1).padStart(2, '0');
         const yyyy = today.getFullYear();
+        
+        const hh = String(today.getHours()).padStart(2, '0');
+        const min = String(today.getMinutes()).padStart(2, '0');
+        const ss = String(today.getSeconds()).padStart(2, '0');
+
         document.getElementById('dateInput').value = `${dd}/${mm}/${yyyy}`;
+        document.getElementById('timeInput').value = `${hh}:${min}:${ss}`;
     }
 
     function findRecord(sebangoCode) {
@@ -526,7 +542,61 @@
         }
     }
 
-    function triggerPrint() {
+    async function saveRecordToSheets() {
+        const sebango = document.getElementById('sebangoInput').value.toUpperCase();
+        const match = findRecord(sebango);
+        const partNumber = match ? match.partNumber : "";
+        const qpc = document.getElementById('qpcInput').value;
+        const cantidad = document.getElementById('quantityInput').value;
+
+        const now = new Date();
+        const dd = String(now.getDate()).padStart(2, '0');
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const yyyy = now.getFullYear();
+        const fecha = `${dd}/${mm}/${yyyy}`;
+
+        const hh = String(now.getHours()).padStart(2, '0');
+        const min = String(now.getMinutes()).padStart(2, '0');
+        const ss = String(now.getSeconds()).padStart(2, '0');
+        const hora = `${hh}:${min}:${ss}`;
+
+        const payload = {
+            sebango: sebango,
+            partNumber: partNumber,
+            qpc: qpc,
+            cantidad: cantidad,
+            fecha: fecha,
+            hora: hora
+        };
+
+        try {
+            // Se envía como text/plain para evitar bloqueos por Pre-flight CORS en Google Apps Script
+            await fetch(WRITE_APP_URL, {
+                method: "POST",
+                mode: "no-cors",
+                headers: {
+                    "Content-Type": "text/plain;charset=utf-8"
+                },
+                body: JSON.stringify(payload)
+            });
+            console.log("Enviado a guardar correctamente");
+        } catch (error) {
+            console.error("Error al registrar en Google Sheets:", error);
+        }
+    }
+
+    async function triggerPrint() {
+        const btn = document.getElementById('btnPrint');
+        btn.disabled = true;
+        btn.textContent = "Guardando...";
+
+        // 1. Enviar el registro
+        await saveRecordToSheets();
+
+        btn.disabled = false;
+        btn.textContent = "Imprimir y Registrar";
+
+        // 2. Disparar impresión
         window.print();
     }
 
