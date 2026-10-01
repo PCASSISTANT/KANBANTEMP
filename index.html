@@ -92,6 +92,7 @@
             border-radius: 6px;
             margin-bottom: 18px;
             font-size: 0.9rem;
+            line-height: 1.5;
         }
 
         .btn {
@@ -143,7 +144,6 @@
             overflow-y: auto;
         }
 
-        
         .kanban-card {
             width: 150mm;
             height: 105mm;
@@ -357,11 +357,7 @@
                 <div><strong>Prev. Process:</strong> <span id="infoPrev">-</span></div>
                 <div><strong>Next Process:</strong> <span id="infoNext">-</span></div>
                 <div><strong>Box Type:</strong> <span id="infoBox">-</span></div>
-            </div>
-
-            <div class="form-group">
-                <label for="qpcInput">Número de QPC (Piezas/Caja):</label>
-                <input type="number" id="qpcInput" value="120" min="1" required oninput="generateKanbans()">
+                <div><strong>QPC (Piezas/Caja):</strong> <span id="infoQPC">-</span></div>
             </div>
 
             <div class="form-group">
@@ -454,31 +450,33 @@
         const match = findRecord(val);
 
         if (match) {
-            document.getElementById('infoPN').textContent = match.partNumber;
-            document.getElementById('infoPrev').textContent = match.prevProcess;
-            document.getElementById('infoNext').textContent = match.nextProcess;
-            document.getElementById('infoBox').textContent = match.boxType;
+            document.getElementById('infoPN').textContent = match.partNumber || "---";
+            document.getElementById('infoPrev').textContent = match.prevProcess || "---";
+            document.getElementById('infoNext').textContent = match.nextProcess || "---";
+            document.getElementById('infoBox').textContent = match.boxType || "---";
+            document.getElementById('infoQPC').textContent = match.qpc || "---";
         } else {
             document.getElementById('infoPN').textContent = "No encontrado";
             document.getElementById('infoPrev').textContent = "-";
             document.getElementById('infoNext').textContent = "-";
             document.getElementById('infoBox').textContent = "-";
+            document.getElementById('infoQPC').textContent = "-";
         }
         generateKanbans();
     }
 
     function generateKanbans() {
         const sebango = document.getElementById('sebangoInput').value.toUpperCase() || "";
-        const qpc = document.getElementById('qpcInput').value || "120";
         const qty = parseInt(document.getElementById('quantityInput').value) || 1;
         const dateVal = document.getElementById('dateInput').value || "";
 
         const match = findRecord(sebango);
 
-        const partNumber = match ? match.partNumber : "---";
-        const prevProcess = match ? match.prevProcess : "---";
-        const nextProcess = match ? match.nextProcess : "---";
-        const boxType = match ? match.boxType : "---";
+        const partNumber = match ? (match.partNumber || "---") : "---";
+        const prevProcess = match ? (match.prevProcess || "---") : "---";
+        const nextProcess = match ? (match.nextProcess || "---") : "---";
+        const boxType = match ? (match.boxType || "---") : "---";
+        const qpc = match ? (match.qpc || "---") : "---";
 
         const printArea = document.getElementById('printArea');
         printArea.innerHTML = "";
@@ -545,8 +543,9 @@
     async function saveRecordToSheets() {
         const sebango = document.getElementById('sebangoInput').value.toUpperCase();
         const match = findRecord(sebango);
-        const partNumber = match ? match.partNumber : "";
-        const qpc = document.getElementById('qpcInput').value;
+        
+        const partNumber = match ? (match.partNumber || "") : "";
+        const qpc = match ? (match.qpc || "") : "";
         const cantidad = document.getElementById('quantityInput').value;
 
         const now = new Date();
