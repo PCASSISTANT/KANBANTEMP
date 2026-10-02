@@ -92,7 +92,6 @@
             border-radius: 6px;
             margin-bottom: 18px;
             font-size: 0.9rem;
-            line-height: 1.5;
         }
 
         .btn {
@@ -144,6 +143,8 @@
             overflow-y: auto;
         }
 
+        /* --- DISEÑO DE TARJETA KANBAN --- */
+        
         .kanban-card {
             width: 150mm;
             height: 105mm;
@@ -344,7 +345,7 @@
 <div class="container">
     <div class="control-panel">
         <h2>Configurar Kanban</h2>
-        
+
         <form id="kanbanForm" onsubmit="event.preventDefault(); triggerPrint();">
             <div class="form-group">
                 <label for="sebangoInput">SEBANGO / Código:</label>
@@ -357,7 +358,11 @@
                 <div><strong>Prev. Process:</strong> <span id="infoPrev">-</span></div>
                 <div><strong>Next Process:</strong> <span id="infoNext">-</span></div>
                 <div><strong>Box Type:</strong> <span id="infoBox">-</span></div>
-                <div><strong>QPC (Piezas/Caja):</strong> <span id="infoQPC">-</span></div>
+            </div>
+
+            <div class="form-group">
+                <label for="qpcInput">Número de QPC (Piezas/Caja):</label>
+                <input type="number" id="qpcInput" value="120" min="1" required oninput="generateKanbans()">
             </div>
 
             <div class="form-group">
@@ -366,6 +371,7 @@
             </div>
 
             <div class="form-group">
+                <label for="dateInput">Fecha (Bloqueada al día actual):</label>
                 <label for="dateInput">Fecha:</label>
                 <input type="text" id="dateInput" readonly>
             </div>
@@ -388,7 +394,7 @@
 <script>
     // URL de lectura (Base de datos Kanban)
     const READ_APP_URL = "https://script.google.com/macros/s/AKfycby6Lig5xwMFmD4p5iJRKKJu6PxZqwoUrUtW4vI_YqWpShTEYOvbNqQQnQ8HisUhCm8/exec"; 
-    
+
     // URL de escritura (Asegúrate de colocar la URL correcta generada tras el desplegar)
     const WRITE_APP_URL = "https://script.google.com/macros/s/AKfycbxtoscz6U6tIQBcPpVUh1FNx3y7Sfhy9PBfxlsmFo2pFHe8ECtUVO2msF48Us4CngY/exec";
 
@@ -399,14 +405,14 @@
         try {
             const response = await fetch(READ_APP_URL);
             const data = await response.json();
-            
+
             const datalist = document.getElementById('sebangoList');
             datalist.innerHTML = "";
 
             data.forEach(item => {
                 if (item.sebango) {
                     databaseMap.set(item.sebango.toUpperCase(), item);
-                    
+
                     const option = document.createElement('option');
                     option.value = item.sebango;
                     option.textContent = `${item.sebango} - ${item.partNumber}`;
@@ -432,7 +438,7 @@
         const dd = String(today.getDate()).padStart(2, '0');
         const mm = String(today.getMonth() + 1).padStart(2, '0');
         const yyyy = today.getFullYear();
-        
+
         const hh = String(today.getHours()).padStart(2, '0');
         const min = String(today.getMinutes()).padStart(2, '0');
         const ss = String(today.getSeconds()).padStart(2, '0');
@@ -450,33 +456,31 @@
         const match = findRecord(val);
 
         if (match) {
-            document.getElementById('infoPN').textContent = match.partNumber || "---";
-            document.getElementById('infoPrev').textContent = match.prevProcess || "---";
-            document.getElementById('infoNext').textContent = match.nextProcess || "---";
-            document.getElementById('infoBox').textContent = match.boxType || "---";
-            document.getElementById('infoQPC').textContent = match.qpc || "---";
+            document.getElementById('infoPN').textContent = match.partNumber;
+            document.getElementById('infoPrev').textContent = match.prevProcess;
+            document.getElementById('infoNext').textContent = match.nextProcess;
+            document.getElementById('infoBox').textContent = match.boxType;
         } else {
             document.getElementById('infoPN').textContent = "No encontrado";
             document.getElementById('infoPrev').textContent = "-";
             document.getElementById('infoNext').textContent = "-";
             document.getElementById('infoBox').textContent = "-";
-            document.getElementById('infoQPC').textContent = "-";
         }
         generateKanbans();
     }
 
     function generateKanbans() {
         const sebango = document.getElementById('sebangoInput').value.toUpperCase() || "";
+        const qpc = document.getElementById('qpcInput').value || "120";
         const qty = parseInt(document.getElementById('quantityInput').value) || 1;
         const dateVal = document.getElementById('dateInput').value || "";
 
         const match = findRecord(sebango);
 
-        const partNumber = match ? (match.partNumber || "---") : "---";
-        const prevProcess = match ? (match.prevProcess || "---") : "---";
-        const nextProcess = match ? (match.nextProcess || "---") : "---";
-        const boxType = match ? (match.boxType || "---") : "---";
-        const qpc = match ? (match.qpc || "---") : "---";
+        const partNumber = match ? match.partNumber : "---";
+        const prevProcess = match ? match.prevProcess : "---";
+        const nextProcess = match ? match.nextProcess : "---";
+        const boxType = match ? match.boxType : "---";
 
         const printArea = document.getElementById('printArea');
         printArea.innerHTML = "";
@@ -543,9 +547,8 @@
     async function saveRecordToSheets() {
         const sebango = document.getElementById('sebangoInput').value.toUpperCase();
         const match = findRecord(sebango);
-        
-        const partNumber = match ? (match.partNumber || "") : "";
-        const qpc = match ? (match.qpc || "") : "";
+        const partNumber = match ? match.partNumber : "";
+        const qpc = document.getElementById('qpcInput').value;
         const cantidad = document.getElementById('quantityInput').value;
 
         const now = new Date();
