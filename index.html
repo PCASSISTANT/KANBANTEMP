@@ -78,7 +78,7 @@
             font-family: Calibri, Arial, sans-serif;
         }
 
-        .form-group input[readonly] {
+        .form-group input[readonly], .form-group input:disabled {
             background-color: #edf2f7;
             color: #4a5568;
             cursor: not-allowed;
@@ -362,7 +362,8 @@
 
             <div class="form-group">
                 <label for="qpcInput">Número de QPC (Piezas/Caja):</label>
-                <input type="number" id="qpcInput" value="120" min="1" required oninput="generateKanbans()">
+                <!-- QPC ahora es de solo lectura y se autocompleta -->
+                <input type="text" id="qpcInput" placeholder="Autocompletado..." readonly required>
             </div>
 
             <div class="form-group">
@@ -372,7 +373,6 @@
 
             <div class="form-group">
                 <label for="dateInput">Fecha (Bloqueada al día actual):</label>
-                <label for="dateInput">Fecha:</label>
                 <input type="text" id="dateInput" readonly>
             </div>
 
@@ -392,8 +392,8 @@
 </div>
 
 <script>
-    // URL de lectura (Base de datos Kanban)
-    const READ_APP_URL = "https://script.google.com/macros/s/AKfycby6Lig5xwMFmD4p5iJRKKJu6PxZqwoUrUtW4vI_YqWpShTEYOvbNqQQnQ8HisUhCm8/exec"; 
+    // URL de lectura (Base de datos Kanban) - ¡ACTUALIZADA CON TU NUEVA URL!
+    const READ_APP_URL = "https://script.google.com/macros/s/AKfycbzrOmKlNKV0lcO0gXCSeOOJ0qwra8B6KemXQGzmnom_dfpaHOgZrMphDl2srv_RSdI/exec"; 
 
     // URL de escritura (Asegúrate de colocar la URL correcta generada tras el desplegar)
     const WRITE_APP_URL = "https://script.google.com/macros/s/AKfycbxtoscz6U6tIQBcPpVUh1FNx3y7Sfhy9PBfxlsmFo2pFHe8ECtUVO2msF48Us4CngY/exec";
@@ -456,22 +456,27 @@
         const match = findRecord(val);
 
         if (match) {
-            document.getElementById('infoPN').textContent = match.partNumber;
-            document.getElementById('infoPrev').textContent = match.prevProcess;
-            document.getElementById('infoNext').textContent = match.nextProcess;
-            document.getElementById('infoBox').textContent = match.boxType;
+            document.getElementById('infoPN').textContent = match.partNumber || "---";
+            document.getElementById('infoPrev').textContent = match.prevProcess || "---";
+            document.getElementById('infoNext').textContent = match.nextProcess || "---";
+            document.getElementById('infoBox').textContent = match.boxType || "---";
+            // Extraer y asignar el QPC de la base de datos automáticamente
+            document.getElementById('qpcInput').value = match.qpc || "0"; 
         } else {
             document.getElementById('infoPN').textContent = "No encontrado";
             document.getElementById('infoPrev').textContent = "-";
             document.getElementById('infoNext').textContent = "-";
             document.getElementById('infoBox').textContent = "-";
+            // Limpiar QPC si no se encuentra
+            document.getElementById('qpcInput').value = "";
         }
         generateKanbans();
     }
 
     function generateKanbans() {
         const sebango = document.getElementById('sebangoInput').value.toUpperCase() || "";
-        const qpc = document.getElementById('qpcInput').value || "120";
+        // Ahora el QPC viene del input que ya fue autocompletado y está bloqueado
+        const qpc = document.getElementById('qpcInput').value || "---";
         const qty = parseInt(document.getElementById('quantityInput').value) || 1;
         const dateVal = document.getElementById('dateInput').value || "";
 
